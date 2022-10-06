@@ -154,7 +154,6 @@ const resolvers = {
   },
   Mutation: {
     addBook: (root, args) => {
-      console.log('toimiiii')
       const book = { ...args, id: uuid() }
       books = books.concat(book)
       const author = {name: args.author, id: uuid()}
@@ -168,7 +167,8 @@ const resolvers = {
         }
   
         const updatedAuthor = { ...author, born: args.setBornTo }
-        authors = authors.map((a) => (a.name === args.author ? updatedAuthor : a))
+        console.log('aupdate', updatedAuthor);
+        authors = authors.map((a) => (a.name === args.name ? updatedAuthor : a))
         return updatedAuthor
       },
   }
