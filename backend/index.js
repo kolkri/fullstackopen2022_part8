@@ -1,4 +1,4 @@
-const { ApolloServer, UserInputError, gql } = require('apollo-server')
+const { ApolloServer, UserInputError, AuthenticationError, gql } = require('apollo-server')
 const mongoose = require('mongoose')
 const { v1: uuid } = require('uuid')
 const Book = require('./models/book')
@@ -140,6 +140,7 @@ const typeDefs = gql`
     allBooks(author: String, genre: String): [Book!]!
     allAuthors: [Author!]!
     me: User
+    allGenres: [String!]!
   }
   type Mutation {
     addBook(
@@ -169,7 +170,6 @@ const resolvers = {
     authorCount: async () => Author.collection.countDocuments(),
     allBooks: async (root, args) => {
       const allBooks = await Book.find({}).populate("author")
-      console.log('all', allBooks);
       if (!args.author && !args.genre) {
         return allBooks;
       }
@@ -189,21 +189,25 @@ const resolvers = {
       const allAuthors = await Author.find({});
       return allAuthors;
     },
+    allGenres: async () => {
+      const allBooks = await Book.find({});
+      const genres = new Set(
+        allBooks.map((b) => b.genres).reduce((a, b) => a.concat(b))
+      );
+      return [...genres];
+    },
     me: (root, args, context) => {
       return context.currentUser
     }
   },
-
-  // Book: {
-  //   bookCount: ({name}) => {
-  //     const allBooks = await Book.find({})
-
-  //     return allBooks.filter(b => b.author === name).length
-  //   },
-  // },
+  Author: {
+    bookCount: (root) => {
+      return root.books.length;
+    },
+  },
   Mutation: {
     createUser: async (root, args) => {
-      const user = new User({ username: args.username })
+      const user = new User({ username: args.username, favoriteGenre: args.favoriteGenre })
   
       return user.save()
         .catch(error => {
@@ -277,7 +281,8 @@ const server = new ApolloServer({
         auth.substring(7), JWT_SECRET
       )
       const currentUser = await User
-        .findById(decodedToken.id).populate('favoriteGenre')
+        .findById(decodedToken.id)
+        console.log('user', currentUser);
       return { currentUser }
     }
   }
